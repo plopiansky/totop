@@ -36,7 +36,7 @@ export const PAGE = `<!doctype html>
     <h1>הקמת המערכת בימות המשיח</h1>
     <div class="card">
       <p class="hint">הטוקן משמש פעם אחת להקמת השלוחה ולא נשמר באתר.</p>
-      <label for="scode">קוד הקמה (SETUP_CODE שהוגדר ב-Cloudflare)</label>
+      <label for="scode">קוד הקמה (רק אם הגדרת SETUP_CODE ב-Cloudflare, אחרת להשאיר ריק)</label>
       <input id="scode" type="password" autocomplete="off">
       <label for="stoken">טוקן ימות המשיח (מספר מערכת:סיסמה)</label>
       <input id="stoken" type="password" dir="ltr" autocomplete="off">

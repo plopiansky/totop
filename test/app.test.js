@@ -125,3 +125,15 @@ test('הקמת שלוחה בימות המשיח (עם fetch מדומה): גיב�
     await assert.rejects(installExtension('x', '/', 'l'), /bad token/);
   } finally { globalThis.fetch = orig; }
 });
+
+test('בלי ENC_KEY ובלי SETUP_CODE: המפתח נוצר אוטומטית וההקמה לא דורשת קוד', async () => {
+  const env = { DB: makeEnv().DB };
+  const req = (method, path, body) => worker.fetch(new Request('https://t.example' + path, {
+    method, body: body && JSON.stringify(body), headers: { 'Content-Type': 'application/json' },
+  }), env);
+  // בלי קוד הקמה אנחנו מגיעים לשלב הטוקן (ונכשלים שם), לא נחסמים על הקוד
+  const r = await req('POST', '/api/setup', { token: '', folder: '/', confirm: true });
+  assert.equal(r.status, 400);
+  assert.match((await r.json()).error, /טוקן/);
+  assert.ok(await env.DB.prepare("SELECT value FROM settings WHERE key='enc_key'").first());
+});

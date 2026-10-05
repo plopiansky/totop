@@ -2,7 +2,7 @@ import { PAGE } from './page.js';
 import { handleCall } from './call.js';
 import { installExtension } from './ymapi.js';
 import { parseKeyInput, isValidSecret } from './totp.js';
-import { yemotPathSecret, safeEqual, checkEncKey } from './crypto.js';
+import { yemotPathSecret, safeEqual, checkEncKey, randomToken } from './crypto.js';
 import {
   getSetting, setSetting, normalizePhone, countUsers, createUser, checkPin,
   createSession, sessionUser, deleteSession, addKey, listKeys, deleteKey,
@@ -29,12 +29,24 @@ async function readBody(req) {
   return req.json();
 }
 
+// אם לא הוגדר ENC_KEY כ-secret, נוצר מפתח אקראי ונשמר ב-D1 בהפעלה הראשונה.
+// זה פשוט יותר, אבל חלש יותר: מי שמקבל גישה ל-D1 מקבל גם את המפתח.
+let cachedKey;
+async function withEncKey(env) {
+  if (env.ENC_KEY) { checkEncKey(env); return env; }
+  if (!cachedKey) {
+    await env.DB.prepare("INSERT OR IGNORE INTO settings(key,value) VALUES('enc_key',?)").bind(randomToken()).run();
+    cachedKey = await getSetting(env.DB, 'enc_key');
+  }
+  return { ...env, ENC_KEY: cachedKey };
+}
+
 async function handle(req, env) {
   const url = new URL(req.url);
   const path = url.pathname;
 
   if (req.method === 'GET' && path === '/') return text(200, PAGE, 'text/html; charset=utf-8');
-  checkEncKey(env);
+  env = await withEncKey(env);
 
   // ימות המשיח: /yemot/<סוד שנגזר מ-ENC_KEY>
   if (path.startsWith('/yemot/')) {
@@ -62,8 +74,8 @@ async function handle(req, env) {
     if (configured) {
       if (!me?.is_admin) return json(403, { error: 'רק מנהל יכול להקים מחדש' });
     } else {
-      if (!env.SETUP_CODE) return json(500, { error: 'SETUP_CODE לא הוגדר ב-Cloudflare' });
-      if (!safeEqual(String(body.setupCode || ''), env.SETUP_CODE)) return json(403, { error: 'קוד הקמה שגוי' });
+      // קוד הקמה הוא אופציונלי. בלעדיו, מי שמגיע ראשון לאתר הוא שמקים אותו.
+      if (env.SETUP_CODE && !safeEqual(String(body.setupCode || ''), env.SETUP_CODE)) return json(403, { error: 'קוד הקמה שגוי' });
     }
     const folder = body.folder === '/' || /^\/\d{1,3}$/.test(body.folder || '') ? body.folder : null;
     if (!folder) return json(400, { error: 'נתיב לא תקין. למשל / או /9' });
