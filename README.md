@@ -11,8 +11,8 @@
 ```
 npm install
 npx wrangler login
-npx wrangler d1 create totop            # מדביקים את ה-database_id ב-wrangler.toml
-npx wrangler d1 migrations apply totop --remote
+# מסד הנתונים כבר נוצר (totp), ה-id כבר ב-wrangler.toml
+npx wrangler d1 migrations apply DB --remote
 npx wrangler secret put ENC_KEY         # הדביקו פלט של: openssl rand -hex 32
 npx wrangler secret put SETUP_CODE      # קוד שרק אתם מכירים, להגנה על שלב ההקמה
 npx wrangler deploy
@@ -26,7 +26,7 @@ npx wrangler deploy
 ```
 npm test                                  # בדיקות (Node 22.5+)
 printf 'ENC_KEY=%s\nSETUP_CODE=dev\n' $(openssl rand -hex 32) > .dev.vars
-npx wrangler d1 migrations apply totop --local
+npx wrangler d1 migrations apply DB --local
 npx wrangler dev
 ```
 

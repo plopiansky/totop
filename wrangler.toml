@@ -4,7 +4,6 @@ compatibility_date = "2025-01-01"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "totop"
-# מריצים: npx wrangler d1 create totop  ומדביקים כאן את ה-id שהתקבל
-database_id = "REPLACE_WITH_D1_ID"
+database_name = "totp"
+database_id = "dcfc08d7-1d77-434c-a31e-2a714d21cec1"
 migrations_dir = "migrations"
