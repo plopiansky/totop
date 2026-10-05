@@ -1,0 +1,11 @@
+{
+  "name": "totop",
+  "version": "1.0.0",
+  "description": "אתר לשמירת מפתחות TOTP והקראת הקוד בטלפון דרך ימות המשיח",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>קודי TOTP בטלפון</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --text:#1c1e21; --muted:#6b7280; --accent:#2563eb; --danger:#dc2626; --border:#d9dce1; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --card:#1e2127; --text:#e8e9eb; --muted:#9aa0a8; --border:#343942; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui, sans-serif; }
+  main { max-width:480px; margin:0 auto; padding:24px 16px; }
+  h1 { font-size:22px; margin:0 0 16px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
+  label { display:block; margin:10px 0 4px; font-size:14px; color:var(--muted); }
+  input { width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font:inherit; }
+  button { padding:10px 16px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); border:1px solid var(--border); }
+  button.danger { background:transparent; color:var(--danger); border:1px solid var(--border); padding:4px 10px; }
+  .row { display:flex; gap:8px; margin-top:14px; }
+  .err { color:var(--danger); min-height:1.4em; margin-top:8px; font-size:14px; }
+  .key { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); }
+  .key:last-child { border:0; }
+  .num { color:var(--muted); font-variant-numeric:tabular-nums; margin-inline-end:8px; }
+  .hint { color:var(--muted); font-size:14px; }
+  .top { display:flex; justify-content:space-between; align-items:center; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <section id="auth" hidden>
+    <h1>קודי TOTP בטלפון</h1>
+    <div class="card">
+      <label for="u">שם משתמש (4 עד 12 ספרות)</label>
+      <input id="u" inputmode="numeric" autocomplete="username" maxlength="12">
+      <label for="p">סיסמה (6 עד 12 ספרות)</label>
+      <input id="p" type="password" inputmode="numeric" autocomplete="current-password" maxlength="12">
+      <div class="hint" style="margin-top:8px">שם המשתמש והסיסמה בספרות בלבד, כדי שאפשר יהיה להקיש אותם בטלפון.</div>
+      <div class="row">
+        <button id="login">כניסה</button>
+        <button id="register" class="secondary">הרשמה</button>
+      </div>
+      <div class="err" id="autherr"></div>
+    </div>
+  </section>
+
+  <section id="app" hidden>
+    <div class="top"><h1>המפתחות שלי</h1><button class="secondary" id="logout">יציאה</button></div>
+    <div class="card"><div id="keys"></div></div>
+    <div class="card">
+      <label for="kname">שם (יוקרא בטלפון)</label>
+      <input id="kname" maxlength="40" placeholder="למשל: גוגל">
+      <label for="kkey">מפתח TOTP או קישור otpauth</label>
+      <input id="kkey" dir="ltr" autocomplete="off" spellcheck="false">
+      <div class="row"><button id="add">הוספה</button></div>
+      <div class="err" id="apperr"></div>
+    </div>
+    <p class="hint">להשמעת קוד: התקשרו למספר של ימות המשיח, הקישו שם משתמש וסיסמה, ובחרו מפתח.</p>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: { 'Content-Type': 'application/json' }, body: body && JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || 'שגיאה'), { status: r.status });
+  return j;
+}
+function show(loggedIn) { $('auth').hidden = loggedIn; $('app').hidden = !loggedIn; }
+async function refresh() {
+  try {
+    const { keys } = await api('GET', '/api/keys');
+    show(true);
+    const box = $('keys');
+    box.replaceChildren();
+    if (!keys.length) box.textContent = 'עדיין לא הוספתם מפתחות.';
+    for (const k of keys) {
+      const row = document.createElement('div'); row.className = 'key';
+      const label = document.createElement('span');
+      const num = document.createElement('span'); num.className = 'num'; num.textContent = k.id + '.';
+      label.append(num, k.name);
+      const del = document.createElement('button'); del.className = 'danger'; del.textContent = 'מחיקה';
+      del.onclick = async () => { if (confirm('למחוק את ' + k.name + '?')) { await api('DELETE', '/api/keys/' + k.id); refresh(); } };
+      row.append(label, del); box.append(row);
+    }
+  } catch { show(false); }
+}
+async function auth(path) {
+  $('autherr').textContent = '';
+  try { await api('POST', path, { username: $('u').value, password: $('p').value }); $('p').value = ''; refresh(); }
+  catch (e) { $('autherr').textContent = e.message; }
+}
+$('login').onclick = () => auth('/api/login');
+$('register').onclick = () => auth('/api/register');
+$('logout').onclick = async () => { await api('POST', '/api/logout'); show(false); };
+$('add').onclick = async () => {
+  $('apperr').textContent = '';
+  try { await api('POST', '/api/keys', { name: $('kname').value, key: $('kkey').value }); $('kname').value = $('kkey').value = ''; refresh(); }
+  catch (e) { $('apperr').textContent = e.message; }
+};
+refresh();
+</script>
+</body>
+</html>
