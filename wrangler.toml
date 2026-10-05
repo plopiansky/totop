@@ -1,0 +1,10 @@
+name = "totop"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "totop"
+# מריצים: npx wrangler d1 create totop  ומדביקים כאן את ה-id שהתקבל
+database_id = "REPLACE_WITH_D1_ID"
+migrations_dir = "migrations"

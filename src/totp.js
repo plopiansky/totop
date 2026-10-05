@@ -1,5 +1,3 @@
-import { createHmac } from 'node:crypto';
-
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
 export function normalizeSecret(input) {
@@ -12,10 +10,9 @@ export function isValidSecret(input) {
 }
 
 export function base32Decode(input) {
-  const s = normalizeSecret(input);
   let bits = 0, value = 0;
   const out = [];
-  for (const ch of s) {
+  for (const ch of normalizeSecret(input)) {
     const idx = ALPHABET.indexOf(ch);
     if (idx < 0) throw new Error('מפתח לא תקין');
     value = (value << 5) | idx;
@@ -25,31 +22,29 @@ export function base32Decode(input) {
       bits -= 8;
     }
   }
-  return Buffer.from(out);
+  return new Uint8Array(out);
 }
 
-export function totp(secret, { time = Date.now(), step = 30, digits = 6, algorithm = 'sha1' } = {}) {
+export async function totp(secret, { time = Date.now(), step = 30, digits = 6, algorithm = 'SHA-1' } = {}) {
   const counter = Math.floor(time / 1000 / step);
-  const buf = Buffer.alloc(8);
-  buf.writeBigUInt64BE(BigInt(counter));
-  const hmac = createHmac(algorithm, base32Decode(secret)).update(buf).digest();
-  const offset = hmac[hmac.length - 1] & 0xf;
-  const bin = ((hmac[offset] & 0x7f) << 24) | (hmac[offset + 1] << 16) | (hmac[offset + 2] << 8) | hmac[offset + 3];
+  const msg = new DataView(new ArrayBuffer(8));
+  msg.setBigUint64(0, BigInt(counter));
+  const key = await crypto.subtle.importKey('raw', base32Decode(secret), { name: 'HMAC', hash: algorithm }, false, ['sign']);
+  const h = new Uint8Array(await crypto.subtle.sign('HMAC', key, msg));
+  const o = h[h.length - 1] & 0xf;
+  const bin = ((h[o] & 0x7f) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3];
   return String(bin % 10 ** digits).padStart(digits, '0');
 }
 
-export function secondsLeft(time = Date.now(), step = 30) {
-  return step - (Math.floor(time / 1000) % step);
-}
+export const secondsLeft = (time = Date.now(), step = 30) => step - (Math.floor(time / 1000) % step);
 
-// מקבל גם מפתח גולמי וגם קישור otpauth://
+// מקבל מפתח גולמי או קישור otpauth://
 export function parseKeyInput(input) {
   const raw = String(input || '').trim();
   if (raw.startsWith('otpauth://')) {
     const url = new URL(raw);
-    const secret = url.searchParams.get('secret');
     const label = decodeURIComponent(url.pathname.replace(/^\/+/, '').replace(/^totp\//i, ''));
-    return { secret: normalizeSecret(secret), label };
+    return { secret: normalizeSecret(url.searchParams.get('secret')), label };
   }
   return { secret: normalizeSecret(raw), label: '' };
 }

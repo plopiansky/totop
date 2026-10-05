@@ -1,11 +1,16 @@
 {
   "name": "totop",
-  "version": "1.0.0",
-  "description": "אתר לשמירת מפתחות TOTP והקראת הקוד בטלפון דרך ימות המשיח",
+  "version": "2.0.0",
+  "description": "קודי TOTP בטלפון דרך ימות המשיח, על Cloudflare Workers + D1",
   "type": "module",
+  "private": true,
   "scripts": {
-    "start": "node server.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
     "test": "node --test"
   },
-  "engines": { "node": ">=20" }
+  "devDependencies": {
+    "wrangler": "^4"
+  },
+  "engines": { "node": ">=22.5" }
 }
