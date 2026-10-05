@@ -35,3 +35,12 @@ npx wrangler dev
 - זיהוי לפי מספר המתקשר (caller ID) ניתן לזיוף, והסיסמה היא הגנה שנייה. מי שמכיר את הסיסמה ויכול לזייף את המספר יקבל קודים.
 - הקוד מוקרא בקול, כדאי להתקשר ממקום פרטי.
 - הרשמה חופשית כבויה כברירת מחדל, כי כל שיחה היא על חשבון יחידות המערכת שלכם. המנהל מוסיף משתמשים ידנית.
+
+## פריסה אוטומטית (GitHub Actions)
+דחיפה ל-`main` מריצה בדיקות, מחילה מיגרציות על D1 ופורסת. נדרשים שני Secrets בריפו
+(Settings, Secrets and variables, Actions):
+- `CLOUDFLARE_API_TOKEN`: טוקן מ-Cloudflare עם הרשאות Workers Scripts:Edit ו-D1:Edit (תבנית "Edit Cloudflare Workers" מספיקה, והוסיפו לה D1).
+- `CLOUDFLARE_ACCOUNT_ID`
+
+את `ENC_KEY` ו-`SETUP_CODE` מגדירים פעם אחת עם `wrangler secret put`, והם נשארים בין פריסות.
+צריך גם `npm install` מקומי פעם אחת כדי ש-`package-lock.json` ייכנס לריפו (`npm ci` דורש אותו).
